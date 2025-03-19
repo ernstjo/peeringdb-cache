@@ -2,7 +2,7 @@ FROM python:3.11.4-slim-bullseye
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-RUN pip install peeringdb django-peeringdb django flask
+RUN pip install peeringdb django-peeringdb django flask apscheduler
 
 COPY app.py /app/app.py
 

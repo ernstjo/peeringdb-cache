@@ -4,6 +4,7 @@ import threading
 import time
 
 from django.core import serializers
+from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from peeringdb import resource, get_backend
 from peeringdb.client import Client
@@ -31,30 +32,32 @@ pdb = Client(cfg={
         "timeout": 0,
         "url": "https://www.peeringdb.com/api",
         "user": ""
+    },
+    "log": {
+        
     }
 })
 
 
-class SyncTask(threading.Thread):
-    def run(self, *args, **kwargs):
-        rs = resource.all_resources()
-        global last_sync
-        pdb.updater.update_all(rs)
-        last_sync = time.time()
-
-
-class Scheduler(threading.Thread):
-    def run(self, *args, **kwargs):
-        global last_sync
-        while True:
-            if time.time() - last_sync > 60 * 60 * 6:  # 6 hours to seconds
-                sync.run()
-            time.sleep(60)
-
-
-sync = SyncTask()
 last_sync = 0
-sched = Scheduler()
+lock = False
+
+def sync():
+    print('Sync started..')
+    global last_sync
+    global lock
+    
+    lock = True
+    rs = resource.all_resources()
+    pdb.updater.update_all(rs)
+    last_sync = time.time()
+    lock = False
+    
+    print('Sync done..')
+    
+    
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(sync,'interval',minutes=60)
 sched.start()
 
 
@@ -159,6 +162,7 @@ def get_poc():
 
 @app.route("/metrics")
 def metrics():
+    global lock
     total_orgs = len(pdb.all(resource.Organization))
     total_fac = len(pdb.all(resource.Facility))
     total_net = len(pdb.all(resource.Network))
@@ -191,7 +195,7 @@ peeringdb_cache_entries{{model="poc"}} {total_poc}
 
 # HELP peeringdb_sync_running Is a sync task running?
 # TYPE peeringdb_sync_running gauge
-peeringdb_sync_running {int(sync.is_alive())}
+peeringdb_sync_running {int(lock)}
 
 # HELP peeringdb_last_sync Epoch of last sync
 # TYPE peeringdb_last_sync gauge
@@ -202,8 +206,10 @@ peeringdb_last_sync {int(last_sync)}
 
 @app.route("/sync")
 def sync_start():
-    if not sync.is_alive():
-        sync.start()
+    global lock
+    
+    if not lock:
+        sync()
         return jsonify({"started": True})
     return jsonify({"started": False}), 409
 

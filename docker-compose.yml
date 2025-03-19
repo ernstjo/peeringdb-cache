@@ -1,11 +1,11 @@
 version: "3.7"
 services:
   peeringdb-cache:
-    image: ghcr.io/natesales/peeringdb-cache:latest
+    image: docker.io/route64/peeringdb-cache
     container_name: peeringdb-cache
     volumes:
       - ./peeringdb-cache:/data
     ports:
-      - "127.0.0.1:8080:8080"
+      - '8777:8080'
     environment:
       - PEERINGDB_API_KEY=your-peeringdb-api-key
