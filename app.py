@@ -66,10 +66,6 @@ with app.app_context():
     print('Scheduler started..')
     sched.start()
 
-@app.teardown_appcontext
-def stop_scheduler(exception=None):
-    sched.shutdown()
-
 def model_to_jdict(model):
     d = json.loads(serializers.serialize("json", [model]))[0]
     resp = d["fields"]
