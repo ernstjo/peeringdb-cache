@@ -62,8 +62,7 @@ def sync_job():
 sched = BackgroundScheduler(daemon=True)
 sched.add_job(sync_job,'interval',minutes=60)
 
-@app.before_first_request
-def start_scheduler():
+with app.app_context():
     sched.start()
 
 @app.teardown_appcontext
