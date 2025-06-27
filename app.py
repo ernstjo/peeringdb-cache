@@ -63,6 +63,7 @@ sched = BackgroundScheduler(daemon=True)
 sched.add_job(sync_job,'interval',minutes=60)
 
 with app.app_context():
+    print('Scheduler started..')
     sched.start()
 
 @app.teardown_appcontext
