@@ -38,11 +38,13 @@ pdb = Client(cfg={
     }
 })
 
-
+# Global variables
 last_sync = 0
 lock = False
 
-def sync():
+
+# Sync function job
+def sync_job():
     print('Sync started..')
     global last_sync
     global lock
@@ -55,11 +57,18 @@ def sync():
     
     print('Sync done..')
     
-    
-sched = BackgroundScheduler(daemon=True)
-sched.add_job(sync,'interval',minutes=60)
-sched.start()
 
+# Scheduler    
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(sync_job,'interval',minutes=60)
+
+@app.before_first_request
+def start_scheduler():
+    sched.start()
+
+@app.teardown_appcontext
+def stop_scheduler(exception=None):
+    sched.shutdown()
 
 def model_to_jdict(model):
     d = json.loads(serializers.serialize("json", [model]))[0]
@@ -163,6 +172,8 @@ def get_poc():
 @app.route("/metrics")
 def metrics():
     global lock
+    global last_sync
+    
     total_orgs = len(pdb.all(resource.Organization))
     total_fac = len(pdb.all(resource.Facility))
     total_net = len(pdb.all(resource.Network))
@@ -209,7 +220,7 @@ def sync_start():
     global lock
     
     if not lock:
-        sync()
+        sync_job()
         return jsonify({"started": True})
     return jsonify({"started": False}), 409
 
